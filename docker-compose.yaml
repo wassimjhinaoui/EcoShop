@@ -1,0 +1,39 @@
+version: '3.3'
+services:
+  web:
+    build:
+      context: ./project
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./project:/app
+      - /app/node_modules
+      - /app/.next
+    environment:
+      - DATABASE_URL=mysql://root:rootpassword@db:3306/demo 
+    depends_on:
+      - db 
+    restart: unless-stopped
+    networks:
+      - app-network
+  db:
+    image: mariadb:latest
+    environment:
+      - MYSQL_ROOT_PASSWORD=rootpassword
+      - MYSQL_DATABASE=demo
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=userpassword
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "3306:3306"
+    restart: unless-stopped
+    networks:
+      - app-network
+networks:
+  app-network:
+    driver: bridge
+volumes:
+  db_data:

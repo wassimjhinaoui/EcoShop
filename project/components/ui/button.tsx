@@ -1,0 +1,14 @@
+interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  className?: string;
+}
+
+export function Button({ className = '', children, ...props }: ButtonProps) {
+  return (
+    <button
+      {...props}
+      className={`flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}

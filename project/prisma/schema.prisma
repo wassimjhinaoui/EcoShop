@@ -1,0 +1,221 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model accounts {
+  id                  String  @id @db.VarChar(36)
+  user_id             String  @db.VarChar(36)
+  type                String? @db.VarChar(255)
+  provider            String? @db.VarChar(255)
+  provider_account_id String? @db.VarChar(255)
+  refresh_token       String? @db.Text
+  access_token        String? @db.Text
+  expires_at          Int?
+  token_type          String? @db.VarChar(255)
+  scope               String? @db.VarChar(255)
+  id_token            String? @db.Text
+  session_state       String? @db.VarChar(255)
+  users               users   @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "accounts_ibfk_1")
+
+  @@unique([provider, provider_account_id], map: "provider_unique")
+  @@index([user_id], map: "user_id")
+}
+
+model sessions {
+  id            String   @id @db.VarChar(36)
+  session_token String   @unique(map: "session_token") @db.VarChar(255)
+  user_id       String   @db.VarChar(36)
+  expires       DateTime @db.DateTime(0)
+  users         users    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "sessions_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model users {
+  id             String     @id @db.VarChar(36)
+  name           String?    @db.VarChar(255)
+  email          String     @unique(map: "email") @db.VarChar(255)
+  password       String     @db.VarChar(255)
+  email_verified DateTime?  @db.DateTime(0)
+  image          String?    @db.VarChar(255)
+  created_at     DateTime?  @default(now()) @db.Timestamp(0)
+  updated_at     DateTime?  @default(now()) @db.Timestamp(0)
+  accounts       accounts[]
+  cart           cart[]
+  orders         orders[]
+  reviews        reviews[]
+  sessions       sessions[]
+  wishlist       wishlist[]
+}
+
+model verification_tokens {
+  identifier String   @db.VarChar(255)
+  token      String   @unique(map: "token") @db.VarChar(255)
+  expires    DateTime @db.DateTime(0)
+
+  @@id([identifier, token])
+}
+
+model cart {
+  id               String            @id @db.VarChar(36)
+  user_id          String            @db.VarChar(36)
+  product_id       String            @db.VarChar(36)
+  variant_id       String?           @db.VarChar(36)
+  quantity         Int
+  created_at       DateTime?         @default(now()) @db.Timestamp(0)
+  users            users             @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "cart_ibfk_1")
+  products         products          @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "cart_ibfk_2")
+  product_variants product_variants? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "cart_ibfk_3")
+
+  @@unique([user_id, product_id, variant_id], map: "unique_cart_item")
+  @@index([product_id], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+}
+
+model categories {
+  id                 String       @id @db.VarChar(36)
+  name               String       @db.VarChar(255)
+  description        String?      @db.Text
+  parent_category_id String?      @db.VarChar(36)
+  created_at         DateTime?    @default(now()) @db.Timestamp(0)
+  updated_at         DateTime?    @default(now()) @db.Timestamp(0)
+  categories         categories?  @relation("categoriesTocategories", fields: [parent_category_id], references: [id], onUpdate: Restrict, map: "categories_ibfk_1")
+  other_categories   categories[] @relation("categoriesTocategories")
+  products           products[]
+
+  @@index([parent_category_id], map: "parent_category_id")
+}
+
+model discount_codes {
+  id                  String                       @id @db.VarChar(36)
+  code                String                       @unique(map: "code") @db.VarChar(50)
+  description         String?                      @db.Text
+  discount_type       discount_codes_discount_type
+  discount_value      Decimal                      @db.Decimal(10, 2)
+  min_purchase_amount Decimal?                     @db.Decimal(10, 2)
+  start_date          DateTime?                    @db.DateTime(0)
+  end_date            DateTime?                    @db.DateTime(0)
+  is_active           Boolean?                     @default(true)
+  created_at          DateTime?                    @default(now()) @db.Timestamp(0)
+}
+
+model order_items {
+  id               String            @id @db.VarChar(36)
+  order_id         String            @db.VarChar(36)
+  product_id       String            @db.VarChar(36)
+  variant_id       String?           @db.VarChar(36)
+  quantity         Int
+  unit_price       Decimal           @db.Decimal(10, 2)
+  total_price      Decimal           @db.Decimal(10, 2)
+  orders           orders            @relation(fields: [order_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_1")
+  products         products          @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "order_items_ibfk_2")
+  product_variants product_variants? @relation(fields: [variant_id], references: [id], onUpdate: Restrict, map: "order_items_ibfk_3")
+
+  @@index([order_id], map: "order_id")
+  @@index([product_id], map: "product_id")
+  @@index([variant_id], map: "variant_id")
+}
+
+model orders {
+  id               String                 @id @db.VarChar(36)
+  user_id          String                 @db.VarChar(36)
+  total_amount     Decimal                @db.Decimal(10, 2)
+  status           orders_status?         @default(pending)
+  shipping_address String?                @db.Text
+  billing_address  String?                @db.Text
+  payment_method   String?                @db.VarChar(100)
+  payment_status   orders_payment_status? @default(pending)
+  created_at       DateTime?              @default(now()) @db.Timestamp(0)
+  updated_at       DateTime?              @default(now()) @db.Timestamp(0)
+  order_items      order_items[]
+  users            users                  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "orders_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+model product_variants {
+  id               String        @id @db.VarChar(36)
+  product_id       String        @db.VarChar(36)
+  variant_name     String?       @db.VarChar(100)
+  additional_price Decimal?      @default(0.00) @db.Decimal(10, 2)
+  stock_quantity   Int           @default(0)
+  created_at       DateTime?     @default(now()) @db.Timestamp(0)
+  cart             cart[]
+  order_items      order_items[]
+  products         products      @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "product_variants_ibfk_1")
+
+  @@index([product_id], map: "product_id")
+}
+
+model products {
+  id               String             @id @db.VarChar(36)
+  name             String             @db.VarChar(255)
+  description      String?            @db.Text
+  price            Decimal            @db.Decimal(10, 2)
+  category_id      String?            @db.VarChar(36)
+  stock_quantity   Int                @default(0)
+  image_url        String?            @db.VarChar(255)
+  is_featured      Boolean?           @default(false)
+  is_active        Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(0)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(0)
+  cart             cart[]
+  order_items      order_items[]
+  product_variants product_variants[]
+  categories       categories?        @relation(fields: [category_id], references: [id], onUpdate: Restrict, map: "products_ibfk_1")
+  reviews          reviews[]
+  wishlist         wishlist[]
+
+  @@index([category_id], map: "category_id")
+}
+
+model reviews {
+  id                   String    @id @db.VarChar(36)
+  user_id              String    @db.VarChar(36)
+  product_id           String    @db.VarChar(36)
+  rating               Int
+  comment              String?   @db.Text
+  is_verified_purchase Boolean?  @default(false)
+  created_at           DateTime? @default(now()) @db.Timestamp(0)
+  users                users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_1")
+  products             products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "reviews_ibfk_2")
+
+  @@index([product_id], map: "product_id")
+  @@index([user_id], map: "user_id")
+}
+
+model wishlist {
+  id         String    @id @db.VarChar(36)
+  user_id    String    @db.VarChar(36)
+  product_id String    @db.VarChar(36)
+  created_at DateTime? @default(now()) @db.Timestamp(0)
+  users      users     @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "wishlist_ibfk_1")
+  products   products  @relation(fields: [product_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "wishlist_ibfk_2")
+
+  @@unique([user_id, product_id], map: "unique_wishlist_item")
+  @@index([product_id], map: "product_id")
+}
+
+enum discount_codes_discount_type {
+  percentage
+  fixed_amount
+}
+
+enum orders_status {
+  pending
+  processing
+  shipped
+  delivered
+  cancelled
+}
+
+enum orders_payment_status {
+  pending
+  paid
+  failed
+}
